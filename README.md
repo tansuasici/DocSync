@@ -1,12 +1,24 @@
 # DocSync
 
-Transform GitHub markdown into docs-framework-compatible output. Write once in GFM, publish everywhere.
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
+<!-- [![npm version](https://img.shields.io/npm/v/docsync?color=blue)](https://www.npmjs.com/package/docsync) -->
+
+**Write docs once in GitHub Markdown, publish everywhere.**
+
+DocSync transforms your GitHub-native markdown (`README.md`, `docs/*.md`) into framework-ready MDX. No more maintaining docs in two places.
+
+```
+README.md ──┐
+docs/*.md ──┤── docsync build ──→ .docsync/*.mdx ──→ Fumadocs / Docusaurus / ...
+             └── docsync.config.ts
+```
 
 ## The Problem
 
-You write documentation in markdown — `README.md`, `docs/*.md` — and it looks great on GitHub. But when you want a modern docs site (Fumadocs, Docusaurus, Nextra, Starlight), every framework demands its own directory structure, MDX format, and frontmatter conventions. You end up maintaining docs in two places.
+You write documentation in markdown and it looks great on GitHub. But when you want a modern docs site (Fumadocs, Docusaurus, Nextra, Starlight), every framework demands its own directory structure, MDX format, and frontmatter conventions. You end up maintaining docs in two places.
 
-**DocSync bridges this gap.** Keep your markdown as the single source of truth. DocSync handles the rest.
+DocSync bridges this gap. Keep your markdown as the single source of truth.
 
 ## Quick Start
 
@@ -35,6 +47,10 @@ Build:
 
 ```bash
 npx docsync build
+# ✓ index.mdx
+# ✓ getting-started.mdx
+# ✓ api.mdx
+# Done! 3 files written to .docsync/
 ```
 
 Point your docs framework to the output:
@@ -50,14 +66,12 @@ export const docs = defineDocs({
 
 ## What It Does
 
-DocSync reads your GitHub-native markdown and produces framework-ready MDX:
-
 | Input (GFM) | Output (MDX) |
 |---|---|
 | `> [!NOTE]` alerts | `<Callout>` components |
 | `{curly braces}` in text | `\{escaped\}` for MDX |
 | `<!-- HTML comments -->` | `{/* JSX comments */}` |
-| `./docs/guide.md` links | `/docs/guide` URLs |
+| `./docs/guide.md` links | `/docs/guide` site URLs |
 | `./assets/logo.png` | GitHub raw URL |
 | First `# Heading` | `title` frontmatter |
 | First paragraph | `description` frontmatter |
@@ -113,10 +127,44 @@ export default defineConfig({
 
 ## Supported Targets
 
-- **Fumadocs** — full support (v0.1.0)
-- Docusaurus — planned (v0.2)
-- Nextra — planned
-- Starlight — planned
+| Target | Status |
+|--------|--------|
+| Fumadocs | Full support |
+| Docusaurus | Planned (v0.2) |
+| Nextra | Planned |
+| Starlight | Planned |
+
+## How It Works
+
+DocSync uses a [unified](https://unifiedjs.com/) / remark pipeline to transform markdown at the AST level:
+
+1. **Parse** GFM markdown (tables, task lists, alerts, etc.)
+2. **Transform** GitHub-specific syntax to MDX-compatible output
+3. **Rewrite** relative links and images using the source map
+4. **Inject** frontmatter (title, description) from content analysis
+5. **Generate** framework-specific navigation config
+
+This approach is reliable — no regex hacks, no string replacement. The AST handles edge cases like nested code blocks, frontmatter, and mixed content correctly.
+
+## Contributing
+
+Contributions are welcome! The codebase is TypeScript with a clean architecture:
+
+```
+src/
+  cli/           CLI commands (citty)
+  config/        Config schema (Zod) + loader (c12)
+  core/          Build pipeline + source resolver
+  transform/     Remark plugins (alerts, escaping, links, images)
+  adapters/      Framework-specific output (Fumadocs, ...)
+```
+
+```bash
+pnpm install
+pnpm test        # 29 tests
+pnpm typecheck   # TypeScript verification
+pnpm build       # Build with tsup
+```
 
 ## License
 

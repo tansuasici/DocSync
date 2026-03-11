@@ -5,7 +5,7 @@ import { initCommand } from './commands/init.js'
 const main = defineCommand({
   meta: {
     name: 'docsync',
-    version: '0.1.0',
+    version: '0.0.1',
     description: 'Transform GitHub markdown into docs-framework-compatible output.',
   },
   subCommands: {
