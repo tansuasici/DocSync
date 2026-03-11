@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { defineCommand } from 'citty'
 
-const CONFIG_TEMPLATE = `import { defineConfig } from 'docsync'
+const CONFIG_TEMPLATE = `import { defineConfig } from '@tansuasici/docsync'
 
 export default defineConfig({
   sources: [

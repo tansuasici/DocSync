@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
-<!-- [![npm version](https://img.shields.io/npm/v/docsync?color=blue)](https://www.npmjs.com/package/docsync) -->
+[![npm version](https://img.shields.io/npm/v/@tansuasici/docsync?color=blue)](https://www.npmjs.com/package/@tansuasici/docsync)
 
 **Write docs once in GitHub Markdown, publish everywhere.**
 
@@ -23,7 +23,7 @@ DocSync bridges this gap. Keep your markdown as the single source of truth.
 ## Quick Start
 
 ```bash
-npm install -D docsync
+npm install -D @tansuasici/docsync
 npx docsync init
 ```
 
@@ -31,7 +31,7 @@ Edit the generated config:
 
 ```ts
 // docsync.config.ts
-import { defineConfig } from 'docsync'
+import { defineConfig } from '@tansuasici/docsync'
 
 export default defineConfig({
   sources: [
@@ -81,7 +81,7 @@ It also generates navigation config (`meta.json` for Fumadocs) from your source 
 ## Configuration
 
 ```ts
-import { defineConfig } from 'docsync'
+import { defineConfig } from '@tansuasici/docsync'
 
 export default defineConfig({
   // Required
