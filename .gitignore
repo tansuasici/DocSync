@@ -3,3 +3,5 @@ dist/
 .docsync/
 *.tsbuildinfo
 .DS_Store
+.env*
+.claude/settings.local.json
