@@ -25,3 +25,8 @@ Track corrections and mistakes here. Review at every session start.
 ---
 
 <!-- Add new lessons below this line -->
+
+### npm publish onay gerektirir
+- **Issue**: npm'e yayınlama kullanıcının açık onayı olmadan yapılmamalı
+- **Root Cause**: Geri alınamaz, herkese açık bir aksiyon
+- **Rule**: `npm publish` komutunu ASLA otomatik çalıştırma. Her zaman kullanıcıya sor ve onay bekle.
