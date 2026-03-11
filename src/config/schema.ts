@@ -17,7 +17,7 @@ export const configSchema = z.object({
   /** Source files to include */
   sources: z.array(sourceEntrySchema).min(1),
   /** Target docs framework */
-  target: z.enum(['fumadocs']),
+  target: z.enum(['fumadocs', 'docusaurus', 'nextra', 'starlight']),
   /** Output directory for generated files */
   outDir: z.string().default('.docsync'),
   /** GitHub repository info for external link rewriting */

@@ -90,7 +90,7 @@ export default defineConfig({
     { path: 'docs/**/*.md' },
     { path: 'CHANGELOG.md', slug: 'changelog', order: 99 },
   ],
-  target: 'fumadocs',
+  target: 'fumadocs', // or 'docusaurus', 'nextra', 'starlight'
 
   // Optional
   outDir: '.docsync',           // default: '.docsync'
@@ -127,12 +127,12 @@ export default defineConfig({
 
 ## Supported Targets
 
-| Target | Status |
-|--------|--------|
-| Fumadocs | Full support |
-| Docusaurus | Planned (v0.2) |
-| Nextra | Planned |
-| Starlight | Planned |
+| Target | Status | Alert Syntax | Nav Config |
+|--------|--------|-------------|------------|
+| Fumadocs | Full support | `<Callout>` | `meta.json` |
+| Docusaurus | Full support | `:::note` directive | `_category_.json` |
+| Nextra | Full support | `<Callout>` | `_meta.json` |
+| Starlight | Full support | `:::note` directive | frontmatter `sidebar` |
 
 ## How It Works
 
