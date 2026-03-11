@@ -108,9 +108,13 @@ function deriveSlug(filePath: string): string {
 }
 
 /**
- * Strip common docs directory prefixes.
+ * Strip relative path prefixes (../) and common docs directory prefixes.
+ * ../kit/agent_docs → kit/agent_docs
  * docs/guides/foo → guides/foo
  */
 function stripDocsPrefix(dir: string): string {
-  return dir.replace(/^docs\/?/, '')
+  return dir
+    .replace(/^(\.\.\/)+/, '')
+    .replace(/^\.\//, '')
+    .replace(/^docs\/?/, '')
 }

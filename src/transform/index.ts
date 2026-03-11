@@ -52,7 +52,7 @@ export async function transformMarkdown(
     .use(remarkStringify, {
       bullet: '-',
       emphasis: '*',
-      strong: '**',
+      strong: '*',
       rule: '-',
     })
 

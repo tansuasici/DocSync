@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { visit } from 'unist-util-visit'
 import type { Plugin } from 'unified'
-import type { Root, Image } from 'mdast'
+import type { Root, Image, Html } from 'mdast'
 import type { ResolvedPage } from '../core/source-resolver.js'
 
 interface RewriteImagesOptions {
@@ -9,32 +9,50 @@ interface RewriteImagesOptions {
   page: ResolvedPage
 }
 
+function resolveImageUrl(
+  url: string,
+  page: ResolvedPage,
+  github: { repo: string; branch: string },
+): string {
+  // Skip absolute URLs
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url
+  }
+
+  const currentDir = path.dirname(page.relativePath)
+  const resolvedPath = path.normalize(path.join(currentDir, url))
+
+  return `https://raw.githubusercontent.com/${github.repo}/${github.branch}/${resolvedPath}`
+}
+
 /**
  * Remark plugin that rewrites relative image paths to GitHub raw URLs.
  *
- * Examples:
- *   ./assets/logo.png → https://raw.githubusercontent.com/user/repo/main/assets/logo.png
- *   https://example.com/img.png → https://example.com/img.png (pass-through)
+ * Handles both markdown images (![](url)) and HTML <img> tags.
  */
 export const remarkRewriteImages: Plugin<[RewriteImagesOptions], Root> = (options) => {
   return (tree) => {
+    // If no GitHub config, leave relative paths as-is
+    if (!options.github) return
+
+    const github = options.github
+
+    // Rewrite markdown images: ![alt](url)
     visit(tree, 'image', (node: Image) => {
-      const url = node.url
+      node.url = resolveImageUrl(node.url, options.page, github)
+    })
 
-      // Skip absolute URLs
-      if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-        return
-      }
+    // Rewrite HTML <img> tags
+    visit(tree, 'html', (node: Html) => {
+      if (!/<img\s/i.test(node.value)) return
 
-      // If no GitHub config, leave relative paths as-is
-      if (!options.github) return
-
-      // Resolve relative path against current file's directory
-      const currentDir = path.dirname(options.page.relativePath)
-      const resolvedPath = path.normalize(path.join(currentDir, url))
-
-      const { repo, branch } = options.github
-      node.url = `https://raw.githubusercontent.com/${repo}/${branch}/${resolvedPath}`
+      node.value = node.value.replace(
+        /(<img\s[^>]*?\bsrc=["'])([^"']+)(["'])/gi,
+        (_match, prefix, src, suffix) => {
+          const rewritten = resolveImageUrl(src, options.page, github)
+          return `${prefix}${rewritten}${suffix}`
+        },
+      )
     })
   }
 }
