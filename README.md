@@ -1,14 +1,18 @@
-<p align="center">
-  <img src="./docsync_logo.png" alt="DocSync" width="120" />
-</p>
-
 # DocSync
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
-[![npm version](https://img.shields.io/npm/v/@tansuasici/docsync?color=blue)](https://www.npmjs.com/package/@tansuasici/docsync)
+<p align="center">
+  <img src="./docsync_logo.png" alt="DocSync Logo" width="128" height="128" style="border-radius: 16px;">
+</p>
 
-**Write docs once in GitHub Markdown, publish everywhere.**
+<p align="center">
+  <strong>Write docs once in GitHub Markdown, publish everywhere.</strong>
+</p>
+
+<p align="center">
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT"></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.9-blue" alt="TypeScript"></a>
+  <a href="https://www.npmjs.com/package/@tansuasici/docsync"><img src="https://img.shields.io/npm/v/@tansuasici/docsync?color=blue" alt="npm version"></a>
+</p>
 
 DocSync transforms your GitHub-native markdown (`README.md`, `docs/*.md`) into framework-ready MDX. No more maintaining docs in two places.
 
