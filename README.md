@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./docsync_logo.png" alt="DocSync" width="120" />
+</p>
+
 # DocSync
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
