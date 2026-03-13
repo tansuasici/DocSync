@@ -1,7 +1,7 @@
 # DocSync
 
 <p align="center">
-  <img src="./docsync_logo.png" alt="DocSync Logo" width="128" height="128" style="border-radius: 16px;">
+  <img src="https://raw.githubusercontent.com/tansuasici/DocSync/main/docsync_logo.png" alt="DocSync Logo" width="128" height="128" style="border-radius: 16px;">
 </p>
 
 <p align="center">
