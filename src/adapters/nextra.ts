@@ -47,6 +47,23 @@ export const nextraAdapter: TargetAdapter = {
     }
   },
 
+  mergeNavConfig(existing: Record<string, unknown>, pages: ResolvedPage[]): NavConfigOutput {
+    const merged: Record<string, unknown> = { ...existing }
+
+    // Add new pages that don't exist in the current config
+    for (const page of pages) {
+      const name = page.slug === 'index' ? 'index' : page.slug.split('/').pop()!
+      if (!(name in merged)) {
+        merged[name] = page.title ?? name
+      }
+    }
+
+    return {
+      filename: '_meta.json',
+      content: JSON.stringify(merged, null, 2) + '\n',
+    }
+  },
+
   generateFrontmatter(page: ResolvedPage): Record<string, unknown> {
     const fm: Record<string, unknown> = {
       title: page.title ?? 'Untitled',

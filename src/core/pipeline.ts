@@ -58,7 +58,21 @@ export async function buildPipeline(
   const navConfig = adapter.generateNavConfig(pages)
   if (navConfig) {
     const navPath = path.join(outDir, navConfig.filename)
-    await fs.writeFile(navPath, navConfig.content, 'utf-8')
+
+    // Merge with existing file if adapter supports it
+    if (adapter.mergeNavConfig) {
+      try {
+        const existingContent = await fs.readFile(navPath, 'utf-8')
+        const existing = JSON.parse(existingContent) as Record<string, unknown>
+        const merged = adapter.mergeNavConfig(existing, pages)
+        await fs.writeFile(navPath, merged.content, 'utf-8')
+      } catch {
+        // File doesn't exist or invalid JSON — write fresh
+        await fs.writeFile(navPath, navConfig.content, 'utf-8')
+      }
+    } else {
+      await fs.writeFile(navPath, navConfig.content, 'utf-8')
+    }
   }
 
   return result

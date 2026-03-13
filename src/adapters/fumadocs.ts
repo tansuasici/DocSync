@@ -52,6 +52,33 @@ export const fumadocsAdapter: TargetAdapter = {
     }
   },
 
+  mergeNavConfig(existing: Record<string, unknown>, pages: ResolvedPage[]): NavConfigOutput {
+    const merged: Record<string, unknown> = { ...existing }
+
+    const newPageNames = pages.map((p) => {
+      const parts = p.slug.split('/')
+      return parts[parts.length - 1]
+    })
+
+    // Merge pages array: keep existing entries + append new ones
+    const existingPages = Array.isArray(existing.pages) ? (existing.pages as string[]) : []
+    const existingSet = new Set(existingPages)
+    const mergedPages = [...existingPages]
+
+    for (const name of newPageNames) {
+      if (!existingSet.has(name)) {
+        mergedPages.push(name)
+      }
+    }
+
+    merged.pages = mergedPages
+
+    return {
+      filename: 'meta.json',
+      content: JSON.stringify(merged, null, 2) + '\n',
+    }
+  },
+
   generateFrontmatter(page: ResolvedPage): Record<string, unknown> {
     const fm: Record<string, unknown> = {
       title: page.title ?? 'Untitled',

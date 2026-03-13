@@ -16,6 +16,9 @@ export interface TargetAdapter {
   /** Generate navigation/sidebar config file */
   generateNavConfig(pages: ResolvedPage[]): NavConfigOutput | null
 
+  /** Merge generated nav config with existing file content, preserving user customizations */
+  mergeNavConfig?(existing: Record<string, unknown>, pages: ResolvedPage[]): NavConfigOutput
+
   /** Generate frontmatter fields for a page */
   generateFrontmatter(page: ResolvedPage): Record<string, unknown>
 

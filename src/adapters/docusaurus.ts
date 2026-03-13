@@ -48,6 +48,23 @@ export const docusaurusAdapter: TargetAdapter = {
     }
   },
 
+  mergeNavConfig(existing: Record<string, unknown>, _pages: ResolvedPage[]): NavConfigOutput {
+    // Docusaurus _category_.json has no page list — preserve user customizations entirely,
+    // only fill in missing defaults
+    const defaults = {
+      label: 'Documentation',
+      position: 1,
+      link: { type: 'generated-index' },
+    }
+
+    const merged = { ...defaults, ...existing }
+
+    return {
+      filename: '_category_.json',
+      content: JSON.stringify(merged, null, 2) + '\n',
+    }
+  },
+
   generateFrontmatter(page: ResolvedPage): Record<string, unknown> {
     const fm: Record<string, unknown> = {
       title: page.title ?? 'Untitled',
