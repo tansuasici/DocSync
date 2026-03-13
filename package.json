@@ -1,6 +1,6 @@
 {
   "name": "@tansuasici/docsync",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Transform GitHub markdown into docs-framework-compatible output. Write once in GFM, publish everywhere.",
   "type": "module",
   "bin": {
