@@ -4,7 +4,7 @@
   "description": "Transform GitHub markdown into docs-framework-compatible output. Write once in GFM, publish everywhere.",
   "type": "module",
   "bin": {
-    "docsync": "./dist/cli.js"
+    "docsync": "dist/cli.js"
   },
   "exports": {
     ".": {
