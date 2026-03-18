@@ -5,14 +5,14 @@ import type { Root, Image, Html } from 'mdast'
 import type { ResolvedPage } from '../core/source-resolver.js'
 
 interface RewriteImagesOptions {
-  github?: { repo: string; branch: string }
+  github?: { repo: string; branch: string; rootDir?: string }
   page: ResolvedPage
 }
 
 function resolveImageUrl(
   url: string,
   page: ResolvedPage,
-  github: { repo: string; branch: string },
+  github: { repo: string; branch: string; rootDir?: string },
 ): string {
   // Skip absolute URLs
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
@@ -21,8 +21,10 @@ function resolveImageUrl(
 
   const currentDir = path.dirname(page.relativePath)
   const resolvedPath = path.normalize(path.join(currentDir, url))
+  const rootDir = path.normalize(github.rootDir ?? '.')
+  const repoRelativePath = path.relative(rootDir, resolvedPath)
 
-  return `https://raw.githubusercontent.com/${github.repo}/${github.branch}/${resolvedPath}`
+  return `https://raw.githubusercontent.com/${github.repo}/${github.branch}/${repoRelativePath}`
 }
 
 /**

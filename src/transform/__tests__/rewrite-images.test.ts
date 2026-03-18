@@ -70,4 +70,33 @@ describe('remarkRewriteImages', () => {
       'https://raw.githubusercontent.com/user/repo/main/docs/diagram.svg',
     )
   })
+
+  it('should resolve images relative to rootDir when source is outside cwd', async () => {
+    const externalPage: ResolvedPage = {
+      filePath: '/other/kit/README.md',
+      relativePath: '../kit/README.md',
+      slug: 'index',
+      order: 0,
+    }
+
+    const githubWithRoot = { repo: 'user/repo', branch: 'main', rootDir: '../kit' }
+
+    const processor = (unified() as any)
+      .use(remarkParse)
+      .use(remarkGfm)
+      .use(remarkRewriteImages, { github: githubWithRoot, page: externalPage })
+      .use(remarkStringify)
+
+    const result = String(await processor.process('![logo](assets/logo.png)'))
+    expect(result).toContain(
+      'https://raw.githubusercontent.com/user/repo/main/assets/logo.png',
+    )
+  })
+
+  it('should default rootDir to cwd when not specified', async () => {
+    const result = await processMarkdown('![img](./assets/img.png)')
+    expect(result).toContain(
+      'https://raw.githubusercontent.com/user/repo/main/docs/assets/img.png',
+    )
+  })
 })

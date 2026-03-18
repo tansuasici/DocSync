@@ -25,6 +25,8 @@ export const configSchema = z.object({
     .object({
       repo: z.string(),
       branch: z.string().default('main'),
+      /** Path to the GitHub repo root, relative to cwd (default: '.') */
+      rootDir: z.string().default('.'),
     })
     .optional(),
   /** Base URL path for docs */

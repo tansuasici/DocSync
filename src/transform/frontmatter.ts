@@ -23,22 +23,23 @@ export function extractFrontmatter(
   let title = page.title
   let description = page.description
   let h1LineIndex = -1
+  let frontmatterEndIndex = -1
 
-  // Find first H1
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
-
-    // Skip empty lines and frontmatter
-    if (line === '' || line === '---') continue
-    // Stop if we hit frontmatter block
-    if (i === 0 && line === '---') {
-      const endIndex = lines.indexOf('---', 1)
-      if (endIndex !== -1) {
-        // Skip existing frontmatter — we'll generate our own
-        // TODO: merge existing frontmatter in future version
-        continue
+  // Detect source YAML frontmatter (--- delimited block at start of file)
+  if (lines[0]?.trim() === '---') {
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].trim() === '---') {
+        frontmatterEndIndex = i
+        break
       }
     }
+  }
+
+  // Find first H1 (start after frontmatter if present)
+  const searchStart = frontmatterEndIndex !== -1 ? frontmatterEndIndex + 1 : 0
+  for (let i = searchStart; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (line === '') continue
 
     const h1Match = line.match(/^#\s+(.+)$/)
     if (h1Match) {
@@ -69,17 +70,33 @@ export function extractFrontmatter(
     }
   }
 
-  // Remove the first H1 line from content
-  let contentWithoutH1 = source
-  if (h1LineIndex !== -1) {
-    const newLines = [...lines]
-    newLines.splice(h1LineIndex, 1)
-    // Also remove trailing empty line after H1 if present
-    if (newLines[h1LineIndex]?.trim() === '') {
-      newLines.splice(h1LineIndex, 1)
+  // Remove source frontmatter and first H1 from content
+  const linesToRemove = new Set<number>()
+
+  // Mark frontmatter lines for removal
+  if (frontmatterEndIndex !== -1) {
+    for (let i = 0; i <= frontmatterEndIndex; i++) {
+      linesToRemove.add(i)
     }
-    contentWithoutH1 = newLines.join('\n')
+    // Also remove empty line after frontmatter
+    if (lines[frontmatterEndIndex + 1]?.trim() === '') {
+      linesToRemove.add(frontmatterEndIndex + 1)
+    }
   }
+
+  // Mark H1 line for removal
+  if (h1LineIndex !== -1) {
+    linesToRemove.add(h1LineIndex)
+    // Also remove trailing empty line after H1 if present
+    if (lines[h1LineIndex + 1]?.trim() === '') {
+      linesToRemove.add(h1LineIndex + 1)
+    }
+  }
+
+  const contentWithoutH1 =
+    linesToRemove.size > 0
+      ? lines.filter((_, i) => !linesToRemove.has(i)).join('\n')
+      : source
 
   return { title, description, contentWithoutH1 }
 }
