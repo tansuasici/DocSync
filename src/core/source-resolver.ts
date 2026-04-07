@@ -46,7 +46,7 @@ export async function resolveSourceFiles(
       // Verify file exists and is readable
       await fs.access(filePath, fs.constants.R_OK)
 
-      const slug = source.slug ?? deriveSlug(match)
+      const slug = source.slug ?? deriveSlug(match, source.rootDir)
       const order = source.order ?? autoOrder++
 
       pages.push({
@@ -60,18 +60,23 @@ export async function resolveSourceFiles(
     }
   }
 
-  // Deduplicate by slug (first entry wins)
-  const seen = new Set<string>()
+  // Deduplicate by slug AND file path (first entry wins)
+  const seenSlugs = new Set<string>()
+  const seenFiles = new Set<string>()
   const deduped: ResolvedPage[] = []
   for (const page of pages) {
-    if (!seen.has(page.slug)) {
-      seen.add(page.slug)
-      deduped.push(page)
-    } else {
+    if (seenFiles.has(page.filePath)) {
+      continue // same file already mapped via an earlier explicit entry
+    }
+    if (seenSlugs.has(page.slug)) {
       console.warn(
         `[docsync] Duplicate slug "${page.slug}" from ${page.relativePath} — skipped`,
       )
+      continue
     }
+    seenSlugs.add(page.slug)
+    seenFiles.add(page.filePath)
+    deduped.push(page)
   }
 
   // Sort by order
@@ -83,28 +88,45 @@ export async function resolveSourceFiles(
 /**
  * Derive a URL slug from a file path.
  *
- * Examples:
+ * When `rootDir` is provided, it is stripped from the path before deriving
+ * the slug. This is essential for glob-based sources where the matched
+ * path includes a long prefix (e.g. `../TnsAI.Docs/features/core/agents.md`
+ * with rootDir `../TnsAI.Docs/features` → slug `core/agents`).
+ *
+ * Examples (no rootDir):
  *   README.md → index
  *   docs/getting-started.md → getting-started
  *   docs/guides/setup.md → guides/setup
+ *
+ * Examples (with rootDir):
+ *   ../Repo/features/core/agents.md  (rootDir: ../Repo/features) → core/agents
+ *   ../Repo/architecture/lam.md      (rootDir: ../Repo)          → architecture/lam
  */
-function deriveSlug(filePath: string): string {
-  const parsed = path.parse(filePath)
+function deriveSlug(filePath: string, rootDir?: string): string {
+  let effective = filePath
+
+  if (rootDir) {
+    const prefix = rootDir.replace(/\/$/, '') + '/'
+    if (effective.startsWith(prefix)) {
+      effective = effective.slice(prefix.length)
+    }
+  }
+
+  const parsed = path.parse(effective)
   const name = parsed.name.toLowerCase()
 
   // README → index
   if (name === 'readme') {
-    // If it's in a subdirectory, use the directory path
     if (parsed.dir && parsed.dir !== '.') {
-      return stripDocsPrefix(parsed.dir) + '/index'
+      const dir = rootDir ? parsed.dir : stripDocsPrefix(parsed.dir)
+      return `${dir}/index`
     }
     return 'index'
   }
 
-  const dir = parsed.dir && parsed.dir !== '.' ? stripDocsPrefix(parsed.dir) : ''
-  const slug = dir ? `${dir}/${name}` : name
-
-  return slug
+  const rawDir = parsed.dir && parsed.dir !== '.' ? parsed.dir : ''
+  const dir = rootDir ? rawDir : (rawDir ? stripDocsPrefix(rawDir) : '')
+  return dir ? `${dir}/${name}` : name
 }
 
 /**

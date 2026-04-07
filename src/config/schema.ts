@@ -11,6 +11,8 @@ const sourceEntrySchema = z.object({
   description: z.string().optional(),
   /** Sidebar position (lower = higher) */
   order: z.number().optional(),
+  /** Directory prefix to strip when deriving slugs from glob matches */
+  rootDir: z.string().optional(),
 })
 
 export const configSchema = z.object({

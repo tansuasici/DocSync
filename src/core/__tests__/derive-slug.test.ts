@@ -71,4 +71,48 @@ describe('deriveSlug', () => {
 
     await fs.rm(tmpDir, { recursive: true })
   })
+
+  it('should strip rootDir prefix when deriving slug', async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'docsync-test-'))
+    const coreDir = path.join(tmpDir, 'repo', 'features', 'core')
+    await fs.mkdir(coreDir, { recursive: true })
+    await fs.writeFile(path.join(coreDir, 'agents.md'), '# Agents')
+    await fs.writeFile(path.join(coreDir, 'tools.md'), '# Tools')
+
+    const pages = await resolveSourceFiles(
+      [{ path: 'repo/features/core/**/*.md', rootDir: 'repo/features' }],
+      tmpDir,
+    )
+
+    expect(pages).toHaveLength(2)
+    const slugs = pages.map((p) => p.slug).sort()
+    expect(slugs).toEqual(['core/agents', 'core/tools'])
+
+    await fs.rm(tmpDir, { recursive: true })
+  })
+
+  it('should deduplicate by filePath — explicit entry wins over glob', async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'docsync-test-'))
+    const coreDir = path.join(tmpDir, 'features', 'core')
+    await fs.mkdir(coreDir, { recursive: true })
+    await fs.writeFile(path.join(coreDir, 'agents.md'), '# Agents')
+    await fs.writeFile(path.join(coreDir, 'tools.md'), '# Tools')
+
+    const pages = await resolveSourceFiles(
+      [
+        { path: 'features/core/agents.md', slug: 'custom-slug' },
+        { path: 'features/core/**/*.md', rootDir: 'features' },
+      ],
+      tmpDir,
+    )
+
+    expect(pages).toHaveLength(2)
+    const agentPage = pages.find((p) => p.slug === 'custom-slug')
+    expect(agentPage).toBeDefined()
+    // tools.md picked up by glob
+    const toolsPage = pages.find((p) => p.slug === 'core/tools')
+    expect(toolsPage).toBeDefined()
+
+    await fs.rm(tmpDir, { recursive: true })
+  })
 })
