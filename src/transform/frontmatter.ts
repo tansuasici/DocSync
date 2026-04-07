@@ -62,8 +62,8 @@ export function extractFrontmatter(
     for (let i = h1LineIndex + 1; i < lines.length; i++) {
       const line = lines[i].trim()
       if (line === '') continue
-      // Stop at headings, code blocks, lists, etc.
-      if (line.startsWith('#') || line.startsWith('```') || line.startsWith('-') || line.startsWith('>')) {
+      // Stop at headings, code blocks, lists, HTML tags, etc.
+      if (line.startsWith('#') || line.startsWith('```') || line.startsWith('-') || line.startsWith('>') || line.startsWith('<')) {
         break
       }
       description = line
