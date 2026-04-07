@@ -61,17 +61,21 @@ export const fumadocsAdapter: TargetAdapter = {
 
     const result = new Map<string, NavConfigOutput>()
 
-    // Root meta.json: top-level pages + directory names
-    const rootPages: string[] = []
-    const topLevel = dirs.get('') ?? []
-    for (const p of topLevel) {
-      rootPages.push(p.slug)
-    }
-    for (const dirName of dirs.keys()) {
-      if (dirName !== '' && !rootPages.includes(dirName)) {
-        rootPages.push(dirName)
+    // Root meta.json: ordered by first page's order in each group
+    const rootEntries: { name: string; order: number }[] = []
+    for (const [dir, dirPages] of dirs.entries()) {
+      const minOrder = Math.min(...dirPages.map((p) => p.order))
+      if (dir === '') {
+        // Top-level pages added individually
+        for (const p of dirPages) {
+          rootEntries.push({ name: p.slug, order: p.order })
+        }
+      } else {
+        rootEntries.push({ name: dir, order: minOrder })
       }
     }
+    rootEntries.sort((a, b) => a.order - b.order)
+    const rootPages = rootEntries.map((e) => e.name)
 
     result.set('meta.json', {
       filename: 'meta.json',
@@ -82,7 +86,7 @@ export const fumadocsAdapter: TargetAdapter = {
     for (const [dir, dirPages] of dirs.entries()) {
       if (dir === '') continue
       const title = dir.split('/').pop()!
-      const capitalizedTitle = title.charAt(0).toUpperCase() + title.slice(1)
+      const capitalizedTitle = formatDirectoryTitle(title)
       const pageNames = dirPages.map((p) => p.slug.split('/').pop()!)
 
       result.set(`${dir}/meta.json`, {
@@ -109,4 +113,14 @@ export const fumadocsAdapter: TargetAdapter = {
   getImports(): string[] {
     return ["import { Callout } from 'fumadocs-ui/components/callout'"]
   },
+}
+
+/** Known acronyms that should be uppercased in directory titles */
+const ACRONYMS = new Set(['llm', 'mcp', 'api', 'rag', 'cli', 'sdk', 'spi', 'bdi', 'fsm'])
+
+function formatDirectoryTitle(name: string): string {
+  if (ACRONYMS.has(name.toLowerCase())) {
+    return name.toUpperCase()
+  }
+  return name.charAt(0).toUpperCase() + name.slice(1)
 }
