@@ -19,6 +19,9 @@ export interface TargetAdapter {
   /** Merge generated nav config with existing file content, preserving user customizations */
   mergeNavConfig?(existing: Record<string, unknown>, pages: ResolvedPage[]): NavConfigOutput
 
+  /** Generate per-directory nav configs (e.g. Fumadocs needs meta.json per directory) */
+  generatePerDirectoryNavConfig?(pages: ResolvedPage[]): Map<string, NavConfigOutput>
+
   /** Generate frontmatter fields for a page */
   generateFrontmatter(page: ResolvedPage): Record<string, unknown>
 

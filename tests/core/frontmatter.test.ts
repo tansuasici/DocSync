@@ -34,10 +34,12 @@ describe('extractFrontmatter', () => {
     expect(result.title).toBe('Config Title')
   })
 
-  it('removes H1 from content', () => {
-    const result = extractFrontmatter('# Title\n\nContent here.', makePage())
+  it('removes H1 and description paragraph from content', () => {
+    const result = extractFrontmatter('# Title\n\nFirst paragraph.\n\nSecond paragraph.', makePage())
     expect(result.contentWithoutH1).not.toContain('# Title')
-    expect(result.contentWithoutH1).toContain('Content here.')
+    expect(result.contentWithoutH1).not.toContain('First paragraph.')
+    expect(result.contentWithoutH1).toContain('Second paragraph.')
+    expect(result.description).toBe('First paragraph.')
   })
 
   it('falls back to slug-based title', () => {

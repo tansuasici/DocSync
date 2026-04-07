@@ -211,41 +211,34 @@ describe('nextra mergeNavConfig', () => {
   })
 })
 
-describe('fumadocs mergeNavConfig', () => {
-  it('preserves existing title and extra fields', () => {
-    const existing = {
-      title: 'My Docs',
-      icon: 'book',
-      pages: ['index', 'guide'],
-    }
-    const result = fumadocsAdapter.mergeNavConfig!(existing, testPages)
-    const merged = JSON.parse(result.content)
+describe('fumadocs generatePerDirectoryNavConfig', () => {
+  it('generates root meta.json with top-level pages and directory names', () => {
+    const pages: ResolvedPage[] = [
+      { filePath: '/f', relativePath: 'index.md', slug: 'index', order: 0, title: 'Intro' },
+      { filePath: '/f', relativePath: 'core/agents.md', slug: 'core/agents', order: 1, title: 'Agents' },
+      { filePath: '/f', relativePath: 'core/roles.md', slug: 'core/roles', order: 2, title: 'Roles' },
+      { filePath: '/f', relativePath: 'eval.md', slug: 'evaluation', order: 3, title: 'Eval' },
+    ]
+    const result = fumadocsAdapter.generatePerDirectoryNavConfig!(pages)
+    const root = JSON.parse(result.get('meta.json')!.content)
 
-    expect(merged.title).toBe('My Docs')
-    expect(merged.icon).toBe('book')
+    expect(root.pages).toContain('index')
+    expect(root.pages).toContain('core')
+    expect(root.pages).toContain('evaluation')
+    expect(root.pages).not.toContain('agents')
+    expect(root.pages).not.toContain('roles')
   })
 
-  it('appends new pages without duplicating existing ones', () => {
-    const existing = {
-      title: 'Documentation',
-      pages: ['guide', 'index'],
-    }
-    const result = fumadocsAdapter.mergeNavConfig!(existing, testPages)
-    const merged = JSON.parse(result.content)
+  it('generates per-directory meta.json with page names', () => {
+    const pages: ResolvedPage[] = [
+      { filePath: '/f', relativePath: 'core/agents.md', slug: 'core/agents', order: 1, title: 'Agents' },
+      { filePath: '/f', relativePath: 'core/roles.md', slug: 'core/roles', order: 2, title: 'Roles' },
+    ]
+    const result = fumadocsAdapter.generatePerDirectoryNavConfig!(pages)
+    const coreMeta = JSON.parse(result.get('core/meta.json')!.content)
 
-    // Existing order preserved, new page appended
-    expect(merged.pages).toEqual(['guide', 'index', 'api'])
-  })
-
-  it('keeps user-added pages not from DocSync', () => {
-    const existing = {
-      title: 'Documentation',
-      pages: ['index', 'changelog', 'guide'],
-    }
-    const result = fumadocsAdapter.mergeNavConfig!(existing, testPages)
-    const merged = JSON.parse(result.content)
-
-    expect(merged.pages).toEqual(['index', 'changelog', 'guide', 'api'])
+    expect(coreMeta.title).toBe('Core')
+    expect(coreMeta.pages).toEqual(['agents', 'roles'])
   })
 })
 

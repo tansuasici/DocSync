@@ -57,6 +57,7 @@ export function extractFrontmatter(
   }
 
   // Extract description from first paragraph after H1
+  let descriptionLineIndex = -1
   if (!description && h1LineIndex !== -1) {
     for (let i = h1LineIndex + 1; i < lines.length; i++) {
       const line = lines[i].trim()
@@ -66,6 +67,7 @@ export function extractFrontmatter(
         break
       }
       description = line
+      descriptionLineIndex = i
       break
     }
   }
@@ -90,6 +92,15 @@ export function extractFrontmatter(
     // Also remove trailing empty line after H1 if present
     if (lines[h1LineIndex + 1]?.trim() === '') {
       linesToRemove.add(h1LineIndex + 1)
+    }
+  }
+
+  // Mark description line for removal (it becomes frontmatter description)
+  if (descriptionLineIndex !== -1) {
+    linesToRemove.add(descriptionLineIndex)
+    // Also remove trailing empty line after description
+    if (lines[descriptionLineIndex + 1]?.trim() === '') {
+      linesToRemove.add(descriptionLineIndex + 1)
     }
   }
 

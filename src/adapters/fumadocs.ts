@@ -34,49 +34,64 @@ export const fumadocsAdapter: TargetAdapter = {
     return htmlNode
   },
 
-  generateNavConfig(pages: ResolvedPage[]): NavConfigOutput {
-    const pageNames = pages.map((p) => {
-      // meta.json uses filenames without extension
-      const parts = p.slug.split('/')
-      return parts[parts.length - 1]
-    })
-
-    const meta = {
-      title: 'Documentation',
-      pages: pageNames,
-    }
-
-    return {
-      filename: 'meta.json',
-      content: JSON.stringify(meta, null, 2) + '\n',
-    }
+  generateNavConfig(pages: ResolvedPage[]): NavConfigOutput | null {
+    // Fumadocs needs per-directory meta.json files.
+    // Return null here — we handle it in generatePerDirectoryNavConfig.
+    return null
   },
 
-  mergeNavConfig(existing: Record<string, unknown>, pages: ResolvedPage[]): NavConfigOutput {
-    const merged: Record<string, unknown> = { ...existing }
+  generatePerDirectoryNavConfig(pages: ResolvedPage[]): Map<string, NavConfigOutput> {
+    const dirs = new Map<string, ResolvedPage[]>()
 
-    const newPageNames = pages.map((p) => {
-      const parts = p.slug.split('/')
-      return parts[parts.length - 1]
-    })
-
-    // Merge pages array: keep existing entries + append new ones
-    const existingPages = Array.isArray(existing.pages) ? (existing.pages as string[]) : []
-    const existingSet = new Set(existingPages)
-    const mergedPages = [...existingPages]
-
-    for (const name of newPageNames) {
-      if (!existingSet.has(name)) {
-        mergedPages.push(name)
+    for (const page of pages) {
+      const parts = page.slug.split('/')
+      if (parts.length === 1) {
+        // Top-level page (e.g. "index", "evaluation")
+        const group = dirs.get('') ?? []
+        group.push(page)
+        dirs.set('', group)
+      } else {
+        // Nested page (e.g. "core/agents")
+        const dir = parts.slice(0, -1).join('/')
+        const group = dirs.get(dir) ?? []
+        group.push(page)
+        dirs.set(dir, group)
       }
     }
 
-    merged.pages = mergedPages
+    const result = new Map<string, NavConfigOutput>()
 
-    return {
-      filename: 'meta.json',
-      content: JSON.stringify(merged, null, 2) + '\n',
+    // Root meta.json: top-level pages + directory names
+    const rootPages: string[] = []
+    const topLevel = dirs.get('') ?? []
+    for (const p of topLevel) {
+      rootPages.push(p.slug)
     }
+    for (const dirName of dirs.keys()) {
+      if (dirName !== '' && !rootPages.includes(dirName)) {
+        rootPages.push(dirName)
+      }
+    }
+
+    result.set('meta.json', {
+      filename: 'meta.json',
+      content: JSON.stringify({ title: 'Documentation', pages: rootPages }, null, 2) + '\n',
+    })
+
+    // Per-directory meta.json
+    for (const [dir, dirPages] of dirs.entries()) {
+      if (dir === '') continue
+      const title = dir.split('/').pop()!
+      const capitalizedTitle = title.charAt(0).toUpperCase() + title.slice(1)
+      const pageNames = dirPages.map((p) => p.slug.split('/').pop()!)
+
+      result.set(`${dir}/meta.json`, {
+        filename: `${dir}/meta.json`,
+        content: JSON.stringify({ title: capitalizedTitle, pages: pageNames }, null, 2) + '\n',
+      })
+    }
+
+    return result
   },
 
   generateFrontmatter(page: ResolvedPage): Record<string, unknown> {
