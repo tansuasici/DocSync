@@ -57,4 +57,68 @@ describe('extractFrontmatter', () => {
     )
     expect(result.title).toBe('Introduction')
   })
+
+  describe('description: strip inline markdown', () => {
+    it('strips inline link to plain text', () => {
+      const result = extractFrontmatter(
+        '# Title\n\nConnects with the [SCOP framework](https://scop-framework.netlify.app/) — a Java multi-agent framework.',
+        makePage(),
+      )
+      expect(result.description).toBe(
+        'Connects with the SCOP framework — a Java multi-agent framework.',
+      )
+    })
+
+    it('strips bold, italic, and inline code', () => {
+      const result = extractFrontmatter(
+        '# Title\n\nUses **bold** and *italic* and `code` markers.',
+        makePage(),
+      )
+      expect(result.description).toBe('Uses bold and italic and code markers.')
+    })
+
+    it('strips images and reference links', () => {
+      const result = extractFrontmatter(
+        '# Title\n\nSee ![logo](logo.png) and [docs][ref] for more.\n\n[ref]: /docs',
+        makePage(),
+      )
+      expect(result.description).toBe('See logo and docs for more.')
+    })
+
+    it('strips stray inline HTML tags', () => {
+      const result = extractFrontmatter(
+        '# Title\n\nLine one<br>line two with <span>span</span>.',
+        makePage(),
+      )
+      expect(result.description).toBe('Line oneline two with span.')
+    })
+
+    it('joins multi-line paragraphs into one description', () => {
+      const result = extractFrontmatter(
+        '# Title\n\nFirst sentence on line one.\nSecond sentence on line two.\nThird on three.\n\n## Next',
+        makePage(),
+      )
+      expect(result.description).toBe(
+        'First sentence on line one. Second sentence on line two. Third on three.',
+      )
+    })
+
+    it('removes the multi-line description paragraph from body', () => {
+      const result = extractFrontmatter(
+        '# Title\n\nFirst line.\nSecond line.\n\n## Next\n\nBody.',
+        makePage(),
+      )
+      expect(result.contentWithoutH1).not.toContain('First line.')
+      expect(result.contentWithoutH1).not.toContain('Second line.')
+      expect(result.contentWithoutH1).toContain('## Next')
+    })
+
+    it('respects explicit YAML frontmatter description (no override)', () => {
+      const result = extractFrontmatter(
+        '---\ndescription: Hand-written\n---\n\n# Title\n\nFirst paragraph with [link](url).',
+        makePage({ description: 'Hand-written' }),
+      )
+      expect(result.description).toBe('Hand-written')
+    })
+  })
 })
