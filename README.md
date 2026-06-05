@@ -169,8 +169,9 @@ src/
 
 ```bash
 pnpm install
-pnpm test        # 29 tests
+pnpm test        # 94 tests
 pnpm typecheck   # TypeScript verification
+pnpm lint        # ESLint (flat config)
 pnpm build       # Build with tsup
 ```
 

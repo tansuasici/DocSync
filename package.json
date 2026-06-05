@@ -1,6 +1,6 @@
 {
   "name": "@tansuasici/docsync",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Transform GitHub markdown into docs-framework-compatible output. Write once in GFM, publish everywhere.",
   "type": "module",
   "bin": {
@@ -38,15 +38,24 @@
   ],
   "author": "tansuasici",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tansuasici/DocSync.git"
+  },
+  "homepage": "https://github.com/tansuasici/DocSync#readme",
+  "bugs": {
+    "url": "https://github.com/tansuasici/DocSync/issues"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  },
   "packageManager": "pnpm@10.29.3",
   "dependencies": {
     "c12": "4.0.0-beta.3",
     "citty": "^0.2.1",
     "fast-glob": "^3.3.3",
-    "mdast-util-to-string": "^4.0.0",
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
-    "remark-mdx": "^3.1.1",
     "remark-parse": "^11.0.0",
     "remark-stringify": "^11.0.0",
     "unified": "^11.0.5",
@@ -54,6 +63,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@types/mdast": "^4.0.4",
     "@types/node": "^25.4.0",
     "@types/unist": "^3.0.3",
@@ -61,6 +71,7 @@
     "prettier": "^3.8.1",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.60.1",
     "vitest": "^4.0.18"
   },
   "pnpm": {

@@ -1,6 +1,8 @@
 import { defineConfig } from 'tsup'
 import { readFileSync, writeFileSync, chmodSync } from 'node:fs'
 
+const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as { version: string }
+
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
@@ -12,6 +14,11 @@ export default defineConfig({
   splitting: true,
   sourcemap: true,
   shims: true,
+  // Inline the package version so the CLI's `--version` always matches
+  // package.json instead of a hand-maintained (and stale) literal.
+  define: {
+    __DOCSYNC_VERSION__: JSON.stringify(pkg.version),
+  },
   async onSuccess() {
     // Add shebang only to CLI entry
     const cliPath = 'dist/cli.js'
