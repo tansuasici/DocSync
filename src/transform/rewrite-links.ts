@@ -33,9 +33,13 @@ export const remarkRewriteLinks: Plugin<[RewriteLinksOptions], Root> = (options)
       // Split URL and anchor
       const [urlPath, anchor] = url.split('#')
 
-      // Resolve the relative path against the current file's directory
-      const currentDir = path.dirname(options.page.relativePath)
-      const resolvedPath = path.normalize(path.join(currentDir, urlPath))
+      // Resolve the relative path against the current file's directory.
+      // Use path.posix so the result always uses forward slashes — both the
+      // slug-map keys and docs-site URLs are POSIX-style, and on Windows
+      // path.dirname/join/normalize would otherwise emit backslashes and
+      // break every lookup.
+      const currentDir = path.posix.dirname(options.page.relativePath)
+      const resolvedPath = path.posix.normalize(path.posix.join(currentDir, urlPath))
 
       // Check if this file is in our source map
       const slug = options.slugMap.get(resolvedPath) ?? options.slugMap.get(`./${resolvedPath}`)

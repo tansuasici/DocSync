@@ -58,6 +58,79 @@ describe('extractFrontmatter', () => {
     expect(result.title).toBe('Introduction')
   })
 
+  describe('code-fence awareness', () => {
+    it('ignores a "# comment" inside a leading code block', () => {
+      const src = [
+        '```bash',
+        '# Install the package',
+        'npm install foo',
+        '```',
+        '',
+        '# Real Title',
+        '',
+        'Real description.',
+      ].join('\n')
+      const result = extractFrontmatter(src, makePage())
+
+      expect(result.title).toBe('Real Title')
+      expect(result.description).toBe('Real description.')
+      // The code block must stay intact in the body.
+      expect(result.contentWithoutH1).toContain('# Install the package')
+      expect(result.contentWithoutH1).toContain('npm install foo')
+      // The real H1/description are lifted out of the body.
+      expect(result.contentWithoutH1).not.toContain('# Real Title')
+      expect(result.contentWithoutH1).not.toContain('Real description.')
+    })
+
+    it('handles ~~~ fences too', () => {
+      const src = ['~~~', '# not a title', '~~~', '', '# Actual'].join('\n')
+      const result = extractFrontmatter(src, makePage())
+      expect(result.title).toBe('Actual')
+      expect(result.contentWithoutH1).toContain('# not a title')
+    })
+  })
+
+  describe('setext headings', () => {
+    it('extracts title from a setext H1 (=== underline)', () => {
+      const result = extractFrontmatter(
+        'My Title\n========\n\nThe description.',
+        makePage(),
+      )
+      expect(result.title).toBe('My Title')
+      expect(result.description).toBe('The description.')
+      // Both the text and underline lines are removed from the body.
+      expect(result.contentWithoutH1).not.toContain('My Title')
+      expect(result.contentWithoutH1).not.toContain('========')
+      expect(result.contentWithoutH1).not.toContain('The description.')
+    })
+
+    it('does not treat a standalone === as a heading', () => {
+      const result = extractFrontmatter(
+        '# ATX wins\n\nBody.',
+        makePage(),
+      )
+      expect(result.title).toBe('ATX wins')
+    })
+  })
+
+  describe('description: emphasis-led paragraphs', () => {
+    it('keeps a description that starts with bold', () => {
+      const result = extractFrontmatter(
+        '# Title\n\n**Note:** this project does X and Y.',
+        makePage(),
+      )
+      expect(result.description).toBe('Note: this project does X and Y.')
+    })
+
+    it('still stops at a real bullet list', () => {
+      const result = extractFrontmatter(
+        '# Title\n\n- item one\n- item two',
+        makePage(),
+      )
+      expect(result.description).toBeUndefined()
+    })
+  })
+
   describe('description: strip inline markdown', () => {
     it('strips inline link to plain text', () => {
       const result = extractFrontmatter(

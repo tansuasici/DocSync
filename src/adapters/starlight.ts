@@ -2,7 +2,6 @@ import type { Blockquote, RootContent, Html } from 'mdast'
 import type { AlertType } from '../transform/gfm-alerts.js'
 import type { ResolvedPage } from '../core/source-resolver.js'
 import type { TargetAdapter, NavConfigOutput } from './types.js'
-import { toString } from 'mdast-util-to-string'
 
 /**
  * Alert type mapping: GFM → Starlight aside type
@@ -20,17 +19,16 @@ const ALERT_TYPE_MAP: Record<AlertType, string> = {
 export const starlightAdapter: TargetAdapter = {
   name: 'starlight',
 
-  transformAlert(type: AlertType, node: Blockquote): RootContent {
+  transformAlert(type: AlertType, node: Blockquote): RootContent[] {
     const asideType = ALERT_TYPE_MAP[type]
-    const content = toString(node)
 
-    // Starlight uses ::: directive syntax (Astro-flavored)
-    const htmlNode: Html = {
-      type: 'html',
-      value: `:::${asideType}\n${content}\n:::`,
-    }
+    // Starlight uses ::: directive syntax (Astro-flavored). Keep the
+    // alert's children as real nodes between the markers so the aside body
+    // keeps its markdown formatting.
+    const open: Html = { type: 'html', value: `:::${asideType}` }
+    const close: Html = { type: 'html', value: ':::' }
 
-    return htmlNode
+    return [open, ...node.children, close]
   },
 
   generateNavConfig(): NavConfigOutput | null {

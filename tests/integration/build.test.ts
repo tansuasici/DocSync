@@ -81,11 +81,15 @@ describe('build pipeline (integration)', () => {
     expect(content).not.toContain('../README.md')
   })
 
-  it('escapes curly braces in text', async () => {
+  it('escapes curly braces in text with a single backslash', async () => {
     await buildPipeline(config, FIXTURES_DIR)
     const content = await fs.readFile(path.join(OUT_DIR, 'index.mdx'), 'utf-8')
 
-    expect(content).toContain('\\\\{placeholder\\\\}')
+    // MDX-correct escape is `\{ \}` (single backslash). A double backslash
+    // (`\\{`) would be read by MDX as an escaped backslash followed by an
+    // expression — a compile error.
+    expect(content).toContain('\\{placeholder\\}')
+    expect(content).not.toContain('\\\\{placeholder')
   })
 
   it('converts HTML comments to JSX comments', async () => {

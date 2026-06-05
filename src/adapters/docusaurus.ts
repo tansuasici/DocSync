@@ -2,7 +2,6 @@ import type { Blockquote, RootContent, Html } from 'mdast'
 import type { AlertType } from '../transform/gfm-alerts.js'
 import type { ResolvedPage } from '../core/source-resolver.js'
 import type { TargetAdapter, NavConfigOutput } from './types.js'
-import { toString } from 'mdast-util-to-string'
 
 /**
  * Alert type mapping: GFM → Docusaurus admonition type
@@ -20,17 +19,16 @@ const ALERT_TYPE_MAP: Record<AlertType, string> = {
 export const docusaurusAdapter: TargetAdapter = {
   name: 'docusaurus',
 
-  transformAlert(type: AlertType, node: Blockquote): RootContent {
+  transformAlert(type: AlertType, node: Blockquote): RootContent[] {
     const admonitionType = ALERT_TYPE_MAP[type]
-    const content = toString(node)
 
-    // Docusaurus uses ::: directive syntax
-    const htmlNode: Html = {
-      type: 'html',
-      value: `:::${admonitionType}\n\n${content}\n\n:::`,
-    }
+    // Docusaurus uses ::: directive syntax. Keep the alert's children as
+    // real nodes between the markers so the admonition body keeps its
+    // markdown formatting.
+    const open: Html = { type: 'html', value: `:::${admonitionType}` }
+    const close: Html = { type: 'html', value: ':::' }
 
-    return htmlNode
+    return [open, ...node.children, close]
   },
 
   generateNavConfig(_pages: ResolvedPage[]): NavConfigOutput {

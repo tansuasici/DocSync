@@ -60,7 +60,20 @@ export async function buildPipeline(
     for (const [, navConfig] of navConfigs) {
       const navPath = path.join(outDir, navConfig.filename)
       await fs.mkdir(path.dirname(navPath), { recursive: true })
-      await fs.writeFile(navPath, navConfig.content, 'utf-8')
+
+      // Merge with an existing file (only possible when clean is false —
+      // otherwise the outDir was just wiped) to preserve user edits.
+      let content = navConfig.content
+      if (adapter.mergePerDirectoryNavConfig) {
+        try {
+          const existingContent = await fs.readFile(navPath, 'utf-8')
+          const existing = JSON.parse(existingContent) as Record<string, unknown>
+          content = adapter.mergePerDirectoryNavConfig(existing, navConfig).content
+        } catch {
+          // File doesn't exist or invalid JSON — write fresh.
+        }
+      }
+      await fs.writeFile(navPath, content, 'utf-8')
     }
   } else {
     const navConfig = adapter.generateNavConfig(pages)

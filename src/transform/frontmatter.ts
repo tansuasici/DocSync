@@ -35,18 +35,47 @@ export function extractFrontmatter(
     }
   }
 
-  // Find first H1 (start after frontmatter if present)
+  // Find first H1 (start after frontmatter if present), skipping fenced
+  // code blocks. Without this, a `# comment` line inside a leading code
+  // sample (very common in READMEs) would be mistaken for the page
+  // heading — corrupting the title AND stripping that line from the code
+  // block in the body.
   const searchStart = frontmatterEndIndex !== -1 ? frontmatterEndIndex + 1 : 0
+  let fenceChar: string | null = null
+  // Last line of the heading block: same as h1LineIndex for an ATX `#`
+  // heading, or the underline line for a setext (`Title` / `=====`) heading.
+  let h1LastIndex = -1
   for (let i = searchStart; i < lines.length; i++) {
     const line = lines[i].trim()
+
+    // Track fenced code blocks (``` or ~~~). A fence closes only with the
+    // same marker character it opened with.
+    const fenceMatch = line.match(/^(`{3,}|~{3,})/)
+    if (fenceMatch) {
+      const char = fenceMatch[1][0]
+      if (fenceChar === null) fenceChar = char
+      else if (char === fenceChar) fenceChar = null
+      continue
+    }
+    if (fenceChar !== null) continue // inside a code block — ignore
+
     if (line === '') continue
 
+    // ATX heading: `# Title`
     const h1Match = line.match(/^#\s+(.+)$/)
     if (h1Match) {
-      if (!title) {
-        title = h1Match[1].trim()
-      }
+      if (!title) title = h1Match[1].trim()
       h1LineIndex = i
+      h1LastIndex = i
+      break
+    }
+
+    // Setext heading: a prose line directly underlined by `===`.
+    const underline = lines[i + 1]?.trim()
+    if (underline !== undefined && /^=+$/.test(underline)) {
+      if (!title) title = line
+      h1LineIndex = i
+      h1LastIndex = i + 1
       break
     }
   }
@@ -70,27 +99,27 @@ export function extractFrontmatter(
   let descriptionEndIndex = -1
   if (!description && h1LineIndex !== -1) {
     const paragraphLines: string[] = []
-    for (let i = h1LineIndex + 1; i < lines.length; i++) {
+    for (let i = h1LastIndex + 1; i < lines.length; i++) {
       const trimmed = lines[i].trim()
       if (trimmed === '') {
         if (paragraphLines.length > 0) break // end of paragraph
         continue // still in leading blank lines after H1
       }
-      // Stop at any non-paragraph block: heading, code fence, list,
-      // blockquote, raw HTML, table, image-only line.
+      // Stop at any non-paragraph block. The list / heading markers require
+      // a trailing space, so an emphasis-led sentence (`**Note:** ...`, a
+      // line starting with `*italic*` or a `- dash`-prefixed word) is NOT
+      // mistaken for a list or heading.
       if (
-        trimmed.startsWith('#') ||
+        /^#{1,6}\s/.test(trimmed) || // ATX heading
         trimmed.startsWith('```') ||
         trimmed.startsWith('~~~') ||
-        trimmed.startsWith('-') ||
-        trimmed.startsWith('*') ||
-        trimmed.startsWith('+') ||
-        trimmed.startsWith('>') ||
-        trimmed.startsWith('<') ||
-        trimmed.startsWith('|') ||
-        trimmed.startsWith('!')
+        /^[-*+]\s/.test(trimmed) || // bullet list item
+        /^\d+[.)]\s/.test(trimmed) || // ordered list item
+        trimmed.startsWith('>') || // blockquote
+        trimmed.startsWith('<') || // raw HTML block
+        trimmed.startsWith('|') || // table row
+        /^!\[/.test(trimmed) // image-only line
       ) {
-        if (paragraphLines.length === 0) break
         break
       }
       if (paragraphLines.length === 0) descriptionStartIndex = i
@@ -116,12 +145,14 @@ export function extractFrontmatter(
     }
   }
 
-  // Mark H1 line for removal
+  // Mark the H1 heading for removal (text + setext underline, if any).
   if (h1LineIndex !== -1) {
-    linesToRemove.add(h1LineIndex)
-    // Also remove trailing empty line after H1 if present
-    if (lines[h1LineIndex + 1]?.trim() === '') {
-      linesToRemove.add(h1LineIndex + 1)
+    for (let i = h1LineIndex; i <= h1LastIndex; i++) {
+      linesToRemove.add(i)
+    }
+    // Also remove the trailing empty line after the heading if present.
+    if (lines[h1LastIndex + 1]?.trim() === '') {
+      linesToRemove.add(h1LastIndex + 1)
     }
   }
 

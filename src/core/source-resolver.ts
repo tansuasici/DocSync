@@ -112,7 +112,9 @@ function deriveSlug(filePath: string, rootDir?: string): string {
     }
   }
 
-  const parsed = path.parse(effective)
+  // fast-glob always yields forward-slash paths, so parse with path.posix
+  // to keep slug derivation identical on Windows.
+  const parsed = path.posix.parse(effective)
   const name = parsed.name.toLowerCase()
 
   // README → index

@@ -2,7 +2,6 @@ import type { Blockquote, RootContent, Html } from 'mdast'
 import type { AlertType } from '../transform/gfm-alerts.js'
 import type { ResolvedPage } from '../core/source-resolver.js'
 import type { TargetAdapter, NavConfigOutput } from './types.js'
-import { toString } from 'mdast-util-to-string'
 
 /**
  * Alert type mapping: GFM → Fumadocs Callout type
@@ -21,20 +20,18 @@ const ALERT_TYPE_MAP: Record<AlertType, string> = {
 export const fumadocsAdapter: TargetAdapter = {
   name: 'fumadocs',
 
-  transformAlert(type: AlertType, node: Blockquote): RootContent {
+  transformAlert(type: AlertType, node: Blockquote): RootContent[] {
     const calloutType = ALERT_TYPE_MAP[type]
-    const content = toString(node)
 
-    // Generate an HTML node with Callout JSX
-    const htmlNode: Html = {
-      type: 'html',
-      value: `<Callout type="${calloutType}">\n${content}\n</Callout>`,
-    }
+    // Wrap the alert's own children in <Callout> tags. MDX re-parses the
+    // markdown between the tags, so bold/links/code/lists are preserved.
+    const open: Html = { type: 'html', value: `<Callout type="${calloutType}">` }
+    const close: Html = { type: 'html', value: '</Callout>' }
 
-    return htmlNode
+    return [open, ...node.children, close]
   },
 
-  generateNavConfig(pages: ResolvedPage[]): NavConfigOutput | null {
+  generateNavConfig(_pages: ResolvedPage[]): NavConfigOutput | null {
     // Fumadocs needs per-directory meta.json files.
     // Return null here — we handle it in generatePerDirectoryNavConfig.
     return null
@@ -96,6 +93,31 @@ export const fumadocsAdapter: TargetAdapter = {
     }
 
     return result
+  },
+
+  mergePerDirectoryNavConfig(
+    existing: Record<string, unknown>,
+    generated: NavConfigOutput,
+  ): NavConfigOutput {
+    const gen = JSON.parse(generated.content) as { title: string; pages: string[] }
+    const existingPages = Array.isArray(existing.pages) ? existing.pages : []
+
+    // Preserve the user's title (if they set one) and their page ordering /
+    // custom entries (separators, external links, etc.), appending only the
+    // generated pages that aren't already listed.
+    const merged = {
+      ...existing,
+      title: typeof existing.title === 'string' ? existing.title : gen.title,
+      pages: [
+        ...existingPages,
+        ...gen.pages.filter((p) => !existingPages.includes(p)),
+      ],
+    }
+
+    return {
+      filename: generated.filename,
+      content: JSON.stringify(merged, null, 2) + '\n',
+    }
   },
 
   generateFrontmatter(page: ResolvedPage): Record<string, unknown> {

@@ -242,6 +242,36 @@ describe('fumadocs generatePerDirectoryNavConfig', () => {
   })
 })
 
+describe('fumadocs mergePerDirectoryNavConfig', () => {
+  const generated = {
+    filename: 'core/meta.json',
+    content: JSON.stringify({ title: 'Core', pages: ['agents', 'roles', 'tools'] }, null, 2) + '\n',
+  }
+
+  it('preserves a user-customized title and page ordering', () => {
+    const existing = {
+      title: 'Core Concepts',
+      icon: 'Box',
+      pages: ['roles', '---Advanced---', 'agents'],
+    }
+    const result = fumadocsAdapter.mergePerDirectoryNavConfig!(existing, generated)
+    const merged = JSON.parse(result.content)
+
+    expect(merged.title).toBe('Core Concepts') // user title kept
+    expect(merged.icon).toBe('Box') // extra key kept
+    // User ordering + separators preserved, new page (tools) appended.
+    expect(merged.pages).toEqual(['roles', '---Advanced---', 'agents', 'tools'])
+  })
+
+  it('falls back to the generated title when none is set', () => {
+    const result = fumadocsAdapter.mergePerDirectoryNavConfig!({}, generated)
+    const merged = JSON.parse(result.content)
+
+    expect(merged.title).toBe('Core')
+    expect(merged.pages).toEqual(['agents', 'roles', 'tools'])
+  })
+})
+
 describe('docusaurus mergeNavConfig', () => {
   it('preserves user-customized category fields', () => {
     const existing = {

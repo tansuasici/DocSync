@@ -19,10 +19,13 @@ function resolveImageUrl(
     return url
   }
 
-  const currentDir = path.dirname(page.relativePath)
-  const resolvedPath = path.normalize(path.join(currentDir, url))
-  const rootDir = path.normalize(github.rootDir ?? '.')
-  const repoRelativePath = path.relative(rootDir, resolvedPath)
+  // Use path.posix throughout: the result becomes part of a raw.github URL,
+  // which must use forward slashes. On Windows the platform path module
+  // would emit backslashes and produce a broken URL.
+  const currentDir = path.posix.dirname(page.relativePath)
+  const resolvedPath = path.posix.normalize(path.posix.join(currentDir, url))
+  const rootDir = path.posix.normalize(github.rootDir ?? '.')
+  const repoRelativePath = path.posix.relative(rootDir, resolvedPath)
 
   return `https://raw.githubusercontent.com/${github.repo}/${github.branch}/${repoRelativePath}`
 }

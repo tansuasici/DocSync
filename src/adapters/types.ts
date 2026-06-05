@@ -10,8 +10,14 @@ export interface NavConfigOutput {
 export interface TargetAdapter {
   name: string
 
-  /** Transform a GFM alert blockquote to framework-specific node */
-  transformAlert(type: AlertType, node: Blockquote): RootContent | null
+  /**
+   * Transform a GFM alert blockquote into the framework-specific callout.
+   * Returns the replacement nodes that take the blockquote's place — the
+   * alert's children are kept as real mdast nodes (not flattened to text)
+   * so inline formatting, links, lists, and code survive. Return `null` to
+   * leave the blockquote untouched.
+   */
+  transformAlert(type: AlertType, node: Blockquote): RootContent[] | null
 
   /** Generate navigation/sidebar config file */
   generateNavConfig(pages: ResolvedPage[]): NavConfigOutput | null
@@ -21,6 +27,17 @@ export interface TargetAdapter {
 
   /** Generate per-directory nav configs (e.g. Fumadocs needs meta.json per directory) */
   generatePerDirectoryNavConfig?(pages: ResolvedPage[]): Map<string, NavConfigOutput>
+
+  /**
+   * Merge a freshly generated per-directory nav config with the existing
+   * file on disk, preserving user customizations (extra keys, custom title,
+   * manual page ordering / separators). Only consulted when `clean: false`
+   * and the file already exists.
+   */
+  mergePerDirectoryNavConfig?(
+    existing: Record<string, unknown>,
+    generated: NavConfigOutput,
+  ): NavConfigOutput
 
   /** Generate frontmatter fields for a page */
   generateFrontmatter(page: ResolvedPage): Record<string, unknown>

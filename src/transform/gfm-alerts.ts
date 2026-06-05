@@ -48,10 +48,14 @@ export const remarkGfmAlerts: Plugin<[GfmAlertsOptions], Root> = (options) => {
         node.children.shift()
       }
 
-      // Let the adapter transform the alert
+      // Let the adapter transform the alert. The replacement is an array
+      // (open wrapper, the alert's own children, close wrapper) so the
+      // content keeps its formatting. Splice it in place of the blockquote
+      // and resume traversal past the inserted nodes.
       const replacement = options.adapter.transformAlert(alertType, node)
-      if (replacement) {
-        parent.children[index] = replacement
+      if (replacement && replacement.length > 0) {
+        parent.children.splice(index, 1, ...replacement)
+        return index + replacement.length
       }
     })
   }

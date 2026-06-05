@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm'
 import remarkFrontmatter from 'remark-frontmatter'
 import remarkStringify from 'remark-stringify'
 import { remarkGfmAlerts } from './gfm-alerts.js'
-import { remarkEscapeMdx } from './escape-mdx.js'
+import { remarkEscapeMdx, restoreMdxEscapes } from './escape-mdx.js'
 import { remarkRewriteLinks } from './rewrite-links.js'
 import { remarkRewriteImages } from './rewrite-images.js'
 import { extractFrontmatter } from './frontmatter.js'
@@ -57,7 +57,11 @@ export async function transformMarkdown(
     })
 
   const file = await processor.process(contentWithoutH1)
-  const body = String(file)
+  // Finalize MDX escapes: the escape plugin stashed sentinels on text
+  // nodes; now that the markdown is serialized we can swap them for the
+  // real `\{` / `\<` escapes without remark-stringify doubling the
+  // backslash.
+  const body = restoreMdxEscapes(String(file))
 
   // Build final MDX output
   const lines: string[] = []
@@ -88,11 +92,15 @@ export async function transformMarkdown(
 
 function formatYamlValue(value: unknown): string {
   if (typeof value === 'string') {
-    // Quote strings that contain special YAML characters
-    if (/[:#{}[\],&*?|>!%@`]/.test(value) || value.includes('\n')) {
-      return `"${value.replace(/"/g, '\\"')}"`
-    }
-    return `"${value}"`
+    // Always double-quote, escaping the characters that are special inside
+    // a YAML double-quoted scalar. Backslash MUST come first, otherwise a
+    // value like `Use \n for newline` would be read by YAML as a real
+    // newline. Newlines are escaped so the value stays on one line.
+    const escaped = value
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+    return `"${escaped}"`
   }
   if (typeof value === 'number' || typeof value === 'boolean') {
     return String(value)

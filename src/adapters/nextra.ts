@@ -2,7 +2,6 @@ import type { Blockquote, RootContent, Html } from 'mdast'
 import type { AlertType } from '../transform/gfm-alerts.js'
 import type { ResolvedPage } from '../core/source-resolver.js'
 import type { TargetAdapter, NavConfigOutput } from './types.js'
-import { toString } from 'mdast-util-to-string'
 
 /**
  * Alert type mapping: GFM → Nextra Callout type
@@ -20,16 +19,15 @@ const ALERT_TYPE_MAP: Record<AlertType, string> = {
 export const nextraAdapter: TargetAdapter = {
   name: 'nextra',
 
-  transformAlert(type: AlertType, node: Blockquote): RootContent {
+  transformAlert(type: AlertType, node: Blockquote): RootContent[] {
     const calloutType = ALERT_TYPE_MAP[type]
-    const content = toString(node)
 
-    const htmlNode: Html = {
-      type: 'html',
-      value: `<Callout type="${calloutType}">\n${content}\n</Callout>`,
-    }
+    // Wrap the alert's own children in <Callout> tags so MDX re-parses the
+    // markdown between them — preserving bold, links, code, and lists.
+    const open: Html = { type: 'html', value: `<Callout type="${calloutType}">` }
+    const close: Html = { type: 'html', value: '</Callout>' }
 
-    return htmlNode
+    return [open, ...node.children, close]
   },
 
   generateNavConfig(pages: ResolvedPage[]): NavConfigOutput {
