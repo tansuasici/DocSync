@@ -1,7 +1,7 @@
 import type { DocSyncConfig } from './config/schema.js'
 
 export { configSchema } from './config/schema.js'
-export type { DocSyncConfig, SourceEntry } from './config/schema.js'
+export type { DocSyncConfig, SourceEntry, NavConfig, NavEntry } from './config/schema.js'
 export { loadDocSyncConfig } from './config/loader.js'
 export { resolveSourceFiles } from './core/source-resolver.js'
 export type { ResolvedPage } from './core/source-resolver.js'

@@ -7,6 +7,7 @@ import { remarkGfmAlerts } from './gfm-alerts.js'
 import { remarkEscapeMdx, restoreMdxEscapes } from './escape-mdx.js'
 import { remarkRewriteLinks } from './rewrite-links.js'
 import { remarkRewriteImages } from './rewrite-images.js'
+import { remarkUnwrapHeadingLinks } from './unwrap-heading-links.js'
 import { extractFrontmatter } from './frontmatter.js'
 import type { ResolvedPage } from '../core/source-resolver.js'
 import type { DocSyncConfig } from '../config/schema.js'
@@ -19,10 +20,16 @@ export interface TransformContext {
   config: DocSyncConfig
 }
 
+export interface TransformResult {
+  content: string
+  /** Resolved page title (config override, first H1, or fallback) */
+  title: string
+}
+
 export async function transformMarkdown(
   source: string,
   ctx: TransformContext,
-): Promise<string> {
+): Promise<TransformResult> {
   // Extract title and description from content if not set in config
   const { title, description, contentWithoutH1 } = extractFrontmatter(source, ctx.page)
 
@@ -34,12 +41,20 @@ export async function transformMarkdown(
   })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const processor = (unified() as any)
+  let processor = (unified() as any)
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkFrontmatter)
-    .use(remarkGfmAlerts, { adapter: ctx.adapter })
+    // Escape before alerts: the adapter's injected callout tags (e.g.
+    // `<Callout>` … `</Callout>`) must not be seen as source HTML.
     .use(remarkEscapeMdx)
+    .use(remarkGfmAlerts, { adapter: ctx.adapter })
+
+  if (ctx.adapter.unwrapHeadingLinks) {
+    processor = processor.use(remarkUnwrapHeadingLinks)
+  }
+
+  processor = processor
     .use(remarkRewriteLinks, {
       slugMap: ctx.slugMap,
       baseUrl: ctx.config.baseUrl,
@@ -87,7 +102,7 @@ export async function transformMarkdown(
   lines.push(body.trim())
   lines.push('')
 
-  return lines.join('\n')
+  return { content: lines.join('\n'), title }
 }
 
 function formatYamlValue(value: unknown): string {

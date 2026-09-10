@@ -51,4 +51,40 @@ describe('remarkEscapeMdx + restoreMdxEscapes', () => {
     expect(out).not.toContain('*/b')
     expect(out).toContain('{/*')
   })
+
+  // A tag MDX would read as an unclosed JSX element ("Expected a closing tag").
+  it('escapes a tag that is never closed (prose placeholder)', async () => {
+    const out = await run('Replace <placeholder> with your value.')
+    expect(out).toContain('\\<placeholder>')
+    expect(out).not.toMatch(/(^|[^\\])<placeholder>/)
+  })
+
+  it('escapes generic-style tags like List<T>', async () => {
+    const out = await run('Returns a List<T> of results.')
+    expect(out).toContain('List\\<T>')
+  })
+
+  it('escapes a stray closing tag', async () => {
+    const out = await run('End </tip> here.')
+    expect(out).toContain('\\</tip>')
+  })
+
+  it('keeps matched HTML blocks', async () => {
+    const out = await run('<details>\n<summary>More</summary>\n\nBody\n\n</details>')
+    expect(out).toContain('<details>')
+    expect(out).toContain('<summary>More</summary>')
+    expect(out).not.toContain('\\<')
+  })
+
+  it('keeps matched inline tags', async () => {
+    const out = await run('Press <kbd>Ctrl</kbd> now.')
+    expect(out).toContain('<kbd>Ctrl</kbd>')
+  })
+
+  it('keeps void elements and self-closes them', async () => {
+    const out = await run('Line<br>break and <img src="a.png">')
+    expect(out).toContain('<br />')
+    expect(out).toContain('<img src="a.png" />')
+    expect(out).not.toContain('\\<')
+  })
 })

@@ -2,6 +2,30 @@ import { describe, it, expect } from 'vitest'
 import { configSchema } from '../../src/config/schema.js'
 
 describe('configSchema', () => {
+  it('accepts a nav config and keeps extra meta.json keys', () => {
+    const result = configSchema.safeParse({
+      sources: [{ path: 'README.md' }],
+      target: 'fumadocs',
+      nav: {
+        '': { title: 'Docs', pages: ['index', '---Guides---', '...'] },
+        agents: { icon: 'Bot' },
+      },
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.nav?.agents).toEqual({ icon: 'Bot' })
+    }
+  })
+
+  it('rejects nav pages that are not a string array', () => {
+    const result = configSchema.safeParse({
+      sources: [{ path: 'README.md' }],
+      target: 'fumadocs',
+      nav: { '': { pages: 'index' } },
+    })
+    expect(result.success).toBe(false)
+  })
+
   it('validates a minimal valid config', () => {
     const result = configSchema.safeParse({
       sources: [{ path: 'README.md' }],

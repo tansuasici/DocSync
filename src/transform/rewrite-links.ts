@@ -45,9 +45,12 @@ export const remarkRewriteLinks: Plugin<[RewriteLinksOptions], Root> = (options)
       const slug = options.slugMap.get(resolvedPath) ?? options.slugMap.get(`./${resolvedPath}`)
 
       if (slug !== undefined) {
-        // Rewrite to docs-site URL
+        // Rewrite to docs-site URL. Index pages are served at their
+        // directory route (`agents/index` → `/docs/agents`); keeping the
+        // `/index` suffix 404s on Fumadocs, Docusaurus, Nextra and Starlight.
         const base = options.baseUrl.replace(/\/$/, '')
-        node.url = slug === 'index' ? base : `${base}/${slug}`
+        const route = slug === 'index' ? '' : slug.replace(/\/index$/, '')
+        node.url = route ? `${base}/${route}` : base || '/'
         if (anchor) {
           node.url += `#${anchor}`
         }

@@ -1,7 +1,9 @@
 import type { Blockquote, RootContent, Html } from 'mdast'
 import type { AlertType } from '../transform/gfm-alerts.js'
 import type { ResolvedPage } from '../core/source-resolver.js'
+import type { NavConfig } from '../config/schema.js'
 import type { TargetAdapter, NavConfigOutput } from './types.js'
+import { groupByDirectory, formatDirectoryTitle } from './nav-tree.js'
 
 /**
  * Alert type mapping: GFM → Fumadocs Callout type
@@ -17,8 +19,18 @@ const ALERT_TYPE_MAP: Record<AlertType, string> = {
   caution: 'error',
 }
 
+/** meta.json `pages` syntax that does not name a page or folder */
+const REST = '...'
+const SEPARATOR = /^---.*---$|^---$/
+const LINK = /^(?:external:)?(?:\[[^\]]+\])?\[[^\]]+\]\([^)]+\)$/
+
 export const fumadocsAdapter: TargetAdapter = {
   name: 'fumadocs',
+
+  // Fumadocs wraps each heading (and its TOC entry) in a self-anchor.
+  unwrapHeadingLinks: true,
+
+  supportsNav: true,
 
   transformAlert(type: AlertType, node: Blockquote): RootContent[] {
     const calloutType = ALERT_TYPE_MAP[type]
@@ -37,58 +49,37 @@ export const fumadocsAdapter: TargetAdapter = {
     return null
   },
 
-  generatePerDirectoryNavConfig(pages: ResolvedPage[]): Map<string, NavConfigOutput> {
-    const dirs = new Map<string, ResolvedPage[]>()
-
-    for (const page of pages) {
-      const parts = page.slug.split('/')
-      if (parts.length === 1) {
-        // Top-level page (e.g. "index", "evaluation")
-        const group = dirs.get('') ?? []
-        group.push(page)
-        dirs.set('', group)
-      } else {
-        // Nested page (e.g. "core/agents")
-        const dir = parts.slice(0, -1).join('/')
-        const group = dirs.get(dir) ?? []
-        group.push(page)
-        dirs.set(dir, group)
-      }
+  generatePerDirectoryNavConfig(
+    pages: ResolvedPage[],
+    nav: NavConfig = {},
+  ): Map<string, NavConfigOutput> {
+    const generated = new Map<string, string[]>()
+    for (const [dir, entries] of groupByDirectory(pages)) {
+      generated.set(dir, entries.map((e) => e.name))
     }
+    const overrides = new Map(
+      Object.entries(nav).map(([dir, entry]) => [dir.replace(/^\/+|\/+$/g, ''), entry]),
+    )
 
     const result = new Map<string, NavConfigOutput>()
+    for (const dir of new Set([...generated.keys(), ...overrides.keys()])) {
+      const override = overrides.get(dir)
+      const { title, pages: order, ...extra } = override ?? {}
 
-    // Root meta.json: ordered by first page's order in each group
-    const rootEntries: { name: string; order: number }[] = []
-    for (const [dir, dirPages] of dirs.entries()) {
-      const minOrder = Math.min(...dirPages.map((p) => p.order))
-      if (dir === '') {
-        // Top-level pages added individually
-        for (const p of dirPages) {
-          rootEntries.push({ name: p.slug, order: p.order })
-        }
-      } else {
-        rootEntries.push({ name: dir, order: minOrder })
+      // An explicit `pages` list is written verbatim (separators, `...`,
+      // links); otherwise the generated order is kept.
+      const meta: Record<string, unknown> = {
+        title: title ?? defaultTitle(dir),
+        ...extra,
       }
-    }
-    rootEntries.sort((a, b) => a.order - b.order)
-    const rootPages = rootEntries.map((e) => e.name)
+      const pageList = order ?? generated.get(dir)
+      if (pageList) meta.pages = pageList
 
-    result.set('meta.json', {
-      filename: 'meta.json',
-      content: JSON.stringify({ title: 'Documentation', pages: rootPages }, null, 2) + '\n',
-    })
-
-    // Per-directory meta.json
-    for (const [dir, dirPages] of dirs.entries()) {
-      if (dir === '') continue
-      const title = dir.split('/').pop()!
-      const capitalizedTitle = formatDirectoryTitle(title)
-      const pageNames = dirPages.map((p) => p.slug.split('/').pop()!)
-
-      result.set(`${dir}/meta.json`, {
-        filename: `${dir}/meta.json`,
-        content: JSON.stringify({ title: capitalizedTitle, pages: pageNames }, null, 2) + '\n',
+      const filename = dir === '' ? 'meta.json' : `${dir}/meta.json`
+      result.set(filename, {
+        filename,
+        content: JSON.stringify(meta, null, 2) + '\n',
+        explicit: override !== undefined,
       })
     }
 
@@ -120,6 +111,50 @@ export const fumadocsAdapter: TargetAdapter = {
     }
   },
 
+  validateNavConfig(output: NavConfigOutput, available: Set<string>): string[] {
+    const meta = JSON.parse(output.content) as { pages?: unknown }
+    // Without a `pages` list Fumadocs shows everything — nothing to check.
+    if (!Array.isArray(meta.pages)) return []
+
+    const warnings: string[] = []
+    const listed = new Set<string>()
+    let hasRest = false
+
+    for (const entry of meta.pages) {
+      if (typeof entry !== 'string') continue
+      if (entry === REST) {
+        hasRest = true
+        continue
+      }
+      if (SEPARATOR.test(entry) || LINK.test(entry)) continue
+
+      // `...folder` inlines a folder, `!page` excludes one — both name it.
+      const name = entry.replace(/^(\.\.\.|!)/, '')
+      listed.add(name)
+      if (!available.has(name)) {
+        warnings.push(`${output.filename}: "${entry}" matches no page or folder`)
+      }
+    }
+
+    // Fumadocs treats `pages` as exhaustive: anything not listed (and not
+    // caught by `...`) is built and routed but absent from the sidebar.
+    // A subfolder's index is reachable through the folder label itself.
+    if (!hasRest) {
+      const isRoot = output.filename === 'meta.json'
+      const hidden = [...available]
+        .filter((name) => !listed.has(name) && (isRoot || name !== 'index'))
+        .sort()
+      if (hidden.length > 0) {
+        warnings.push(
+          `${output.filename}: not in "pages", so hidden from the sidebar: ${hidden.join(', ')} ` +
+            `(list them, or add "..." to include the rest)`,
+        )
+      }
+    }
+
+    return warnings
+  },
+
   generateFrontmatter(page: ResolvedPage): Record<string, unknown> {
     const fm: Record<string, unknown> = {
       title: page.title ?? 'Untitled',
@@ -137,12 +172,6 @@ export const fumadocsAdapter: TargetAdapter = {
   },
 }
 
-/** Known acronyms that should be uppercased in directory titles */
-const ACRONYMS = new Set(['llm', 'mcp', 'api', 'rag', 'cli', 'sdk', 'spi', 'bdi', 'fsm'])
-
-function formatDirectoryTitle(name: string): string {
-  if (ACRONYMS.has(name.toLowerCase())) {
-    return name.toUpperCase()
-  }
-  return name.charAt(0).toUpperCase() + name.slice(1)
+function defaultTitle(dir: string): string {
+  return dir === '' ? 'Documentation' : formatDirectoryTitle(dir.split('/').pop()!)
 }

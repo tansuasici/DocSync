@@ -15,6 +15,19 @@ const sourceEntrySchema = z.object({
   rootDir: z.string().optional(),
 })
 
+/**
+ * One directory's navigation, written to its `meta.json` (Fumadocs).
+ * `pages` is passed through verbatim, so Fumadocs syntax works as-is:
+ * `---Section---` separators, `...` (rest), `...folder`, `!page`, and
+ * `[Text](url)` links. Extra keys (`icon`, `defaultOpen`, …) pass through too.
+ */
+const navEntrySchema = z.looseObject({
+  /** Sidebar title of the directory (root: the docs title) */
+  title: z.string().optional(),
+  /** Exact page order. Omit to keep the generated order. */
+  pages: z.array(z.string()).optional(),
+})
+
 export const configSchema = z.object({
   /** Source files to include */
   sources: z.array(sourceEntrySchema).min(1),
@@ -35,7 +48,14 @@ export const configSchema = z.object({
   baseUrl: z.string().default('/docs'),
   /** Clean output directory before build */
   clean: z.boolean().default(true),
+  /**
+   * Explicit navigation per output directory — key `''` is the root,
+   * `'agents'` is `agents/meta.json`. Fumadocs target only.
+   */
+  nav: z.record(z.string(), navEntrySchema).optional(),
 })
 
 export type DocSyncConfig = z.infer<typeof configSchema>
 export type SourceEntry = z.infer<typeof sourceEntrySchema>
+export type NavEntry = z.infer<typeof navEntrySchema>
+export type NavConfig = Record<string, NavEntry>

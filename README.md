@@ -79,12 +79,15 @@ export const docs = defineDocs({
 | `> [!NOTE]` alerts | `<Callout>` components |
 | `{curly braces}` in text | `\{escaped\}` for MDX |
 | `<!-- HTML comments -->` | `{/* JSX comments */}` |
+| Unclosed tags in prose (`<placeholder>`, `List<T>`) | `\<placeholder>` (otherwise an MDX compile error) |
 | `./docs/guide.md` links | `/docs/guide` site URLs |
+| `./docs/agents/README.md` links | `/docs/agents` (folder route, not `/docs/agents/index`) |
+| `## [1.2.0](…/compare/…)` headings | `## 1.2.0` on Fumadocs (it wraps headings in its own anchor — a nested `<a>` breaks hydration) |
 | `./assets/logo.png` | GitHub raw URL |
 | First `# Heading` | `title` frontmatter |
 | First paragraph | `description` frontmatter |
 
-It also generates navigation config (`meta.json` for Fumadocs) from your source ordering.
+It also generates navigation config (`meta.json` for Fumadocs) from your source ordering — or from an explicit [`nav`](#navigation-fumadocs) config.
 
 ## Configuration
 
@@ -120,6 +123,41 @@ export default defineConfig({
 | `title` | `string` | Override page title |
 | `description` | `string` | Override page description |
 | `order` | `number` | Sidebar position (lower = higher) |
+| `rootDir` | `string` | Prefix stripped from glob matches when deriving slugs (`../Repo/docs/core/a.md` with `rootDir: '../Repo/docs'` → `core/a`) |
+
+### Navigation (Fumadocs)
+
+By default every directory's `meta.json` lists its pages and subfolders in source `order`. To control the sidebar yourself, add `nav`, keyed by output directory (`''` is the root):
+
+```ts
+export default defineConfig({
+  // ...
+  nav: {
+    '': {
+      title: 'Documentation',
+      pages: [
+        'index',
+        '---Guides---',        // section separator
+        'getting-started',
+        'agents',              // folder — has its own entry below
+        'skill-explorer',      // page written by another tool is fine
+        '[GitHub](https://github.com/user/repo)',
+        'changelog',
+      ],
+    },
+    agents: { title: 'Agents', pages: ['planner', 'reviewer', '...'] },
+    reference: { title: 'API Reference' }, // title only — keeps generated order
+  },
+})
+```
+
+- `pages` is written verbatim, so all Fumadocs syntax works: `---Label---`, `...` (the rest, alphabetically), `...folder`, `!page`, `[Text](url)`. Other keys (`icon`, `defaultOpen`, …) pass through.
+- An explicit entry is the source of truth — it is never merged with the existing file, even with `clean: false`.
+- After writing, DocSync checks each `meta.json` against what's actually in that directory, including pages other tools wrote there, and warns about:
+  - entries that match no page or folder (typos, renames)
+  - pages missing from `pages`. Fumadocs treats the list as exhaustive, so those pages still build but never show up in the sidebar. End the list with `"..."` to include them.
+
+  The check only sees files that exist when DocSync runs, so run other page generators *before* `docsync build`.
 
 ## Integration with Build Pipeline
 
@@ -139,7 +177,7 @@ export default defineConfig({
 |--------|--------|-------------|------------|
 | Fumadocs | Full support | `<Callout>` | `meta.json` |
 | Docusaurus | Full support | `:::note` directive | `_category_.json` |
-| Nextra | Full support | `<Callout>` | `_meta.json` |
+| Nextra (3+) | Full support | `<Callout>` | `_meta.js` per directory |
 | Starlight | Full support | `:::note` directive | frontmatter `sidebar` |
 
 ## How It Works
@@ -169,7 +207,7 @@ src/
 
 ```bash
 pnpm install
-pnpm test        # 94 tests
+pnpm test        # 121 tests
 pnpm typecheck   # TypeScript verification
 pnpm lint        # ESLint (flat config)
 pnpm build       # Build with tsup

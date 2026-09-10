@@ -43,6 +43,10 @@ export const buildCommand = defineCommand({
       console.error(`  ✗ ${error.file}: ${error.error}`)
     }
 
+    for (const warning of result.warnings) {
+      console.warn(`  ⚠ ${warning}`)
+    }
+
     console.log(
       `\n[docsync] Done! ${result.pages.length} files written to ${config.outDir}/`,
     )

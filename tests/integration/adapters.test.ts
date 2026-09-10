@@ -108,14 +108,20 @@ describe('nextra adapter', () => {
     expect(content).toContain("import { Callout } from 'nextra/components'")
   })
 
-  it('generates _meta.json', async () => {
+  it('generates _meta.js with page titles', async () => {
     await buildPipeline(makeConfig('nextra'), FIXTURES_DIR)
-    const raw = await readOutput('nextra', '_meta.json')
-    const meta = JSON.parse(raw)
+    const raw = await readOutput('nextra', '_meta.js')
+    const meta = parseNextraMeta(raw)
 
-    expect(meta.index).toBe('Introduction')
+    expect(raw.startsWith('export default {')).toBe(true)
+    expect(meta.index).toBe('Introduction') // config override
+    expect(meta['getting-started']).toBe('Getting Started') // from the H1
   })
 })
+
+function parseNextraMeta(raw: string): Record<string, unknown> {
+  return JSON.parse(raw.replace(/^export default /, ''))
+}
 
 // --- Starlight ---
 
@@ -171,14 +177,40 @@ const testPages: ResolvedPage[] = [
   { filePath: '/a/api.md', relativePath: 'api.md', slug: 'api', title: 'API', order: 2 },
 ]
 
-describe('nextra mergeNavConfig', () => {
+describe('nextra generatePerDirectoryNavConfig', () => {
+  it('writes one _meta.js per directory with titles in order', () => {
+    const pages: ResolvedPage[] = [
+      { filePath: '/f', relativePath: 'index.md', slug: 'index', order: 0, title: 'Intro' },
+      { filePath: '/f', relativePath: 'agents/index.md', slug: 'agents/index', order: 1, title: 'Agents' },
+      { filePath: '/f', relativePath: 'agents/core/roles.md', slug: 'agents/core/roles', order: 2, title: 'Roles' },
+      { filePath: '/f', relativePath: 'guide.md', slug: 'guide', order: 3, title: 'Guide' },
+    ]
+    const result = nextraAdapter.generatePerDirectoryNavConfig!(pages)
+
+    expect([...result.keys()]).toEqual(['_meta.js', 'agents/_meta.js', 'agents/core/_meta.js'])
+    expect(parseNextraMeta(result.get('_meta.js')!.content)).toEqual({
+      index: 'Intro',
+      agents: 'Agents',
+      guide: 'Guide',
+    })
+    expect(parseNextraMeta(result.get('agents/_meta.js')!.content)).toEqual({
+      index: 'Agents',
+      core: 'Core',
+    })
+    expect(parseNextraMeta(result.get('agents/core/_meta.js')!.content)).toEqual({ roles: 'Roles' })
+  })
+})
+
+describe('nextra mergePerDirectoryNavConfig', () => {
+  const generated = nextraAdapter.generatePerDirectoryNavConfig!(testPages).get('_meta.js')!
+
   it('preserves user-customized entries', () => {
     const existing = {
       index: { title: 'Home', icon: 'home' },
       guide: 'My Guide',
     }
-    const result = nextraAdapter.mergeNavConfig!(existing, testPages)
-    const merged = JSON.parse(result.content)
+    const result = nextraAdapter.mergePerDirectoryNavConfig!(existing, generated)
+    const merged = parseNextraMeta(result.content)
 
     // User customizations preserved
     expect(merged.index).toEqual({ title: 'Home', icon: 'home' })
@@ -193,8 +225,8 @@ describe('nextra mergeNavConfig', () => {
       '---': { type: 'separator' },
       'external-link': { title: 'Blog', href: 'https://blog.example.com' },
     }
-    const result = nextraAdapter.mergeNavConfig!(existing, testPages)
-    const merged = JSON.parse(result.content)
+    const result = nextraAdapter.mergePerDirectoryNavConfig!(existing, generated)
+    const merged = parseNextraMeta(result.content)
 
     expect(merged['---']).toEqual({ type: 'separator' })
     expect(merged['external-link']).toEqual({ title: 'Blog', href: 'https://blog.example.com' })
@@ -202,8 +234,8 @@ describe('nextra mergeNavConfig', () => {
   })
 
   it('generates fresh config when existing is empty', () => {
-    const result = nextraAdapter.mergeNavConfig!({}, testPages)
-    const merged = JSON.parse(result.content)
+    const result = nextraAdapter.mergePerDirectoryNavConfig!({}, generated)
+    const merged = parseNextraMeta(result.content)
 
     expect(merged.index).toBe('Introduction')
     expect(merged.guide).toBe('Guide')
@@ -305,22 +337,22 @@ describe('pipeline nav config merge', () => {
 
   afterEach(() => cleanup(target))
 
-  it('merges with existing _meta.json when clean is false', async () => {
+  it('merges with existing _meta.js when clean is false', async () => {
     const config = { ...makeConfig(target), clean: false }
     const outDir = path.join(FIXTURES_DIR, `.docsync-test-${target}`)
 
-    // Create output dir with pre-existing _meta.json
+    // Create output dir with pre-existing _meta.js
     await fs.mkdir(outDir, { recursive: true })
     await fs.writeFile(
-      path.join(outDir, '_meta.json'),
-      JSON.stringify({ index: { title: 'Home', icon: 'star' }, custom: 'Custom Page' }, null, 2),
+      path.join(outDir, '_meta.js'),
+      `export default ${JSON.stringify({ index: { title: 'Home', icon: 'star' }, custom: 'Custom Page' }, null, 2)}\n`,
       'utf-8',
     )
 
     await buildPipeline(config, FIXTURES_DIR)
 
-    const raw = await readOutput(target, '_meta.json')
-    const meta = JSON.parse(raw)
+    const raw = await readOutput(target, '_meta.js')
+    const meta = parseNextraMeta(raw)
 
     // User customizations preserved
     expect(meta.index).toEqual({ title: 'Home', icon: 'star' })
@@ -331,21 +363,35 @@ describe('pipeline nav config merge', () => {
     const config = makeConfig(target) // clean: true
     const outDir = path.join(FIXTURES_DIR, `.docsync-test-${target}`)
 
-    // Create output dir with pre-existing _meta.json
+    // Create output dir with pre-existing _meta.js
     await fs.mkdir(outDir, { recursive: true })
     await fs.writeFile(
-      path.join(outDir, '_meta.json'),
-      JSON.stringify({ custom: 'Should Be Gone' }, null, 2),
+      path.join(outDir, '_meta.js'),
+      `export default ${JSON.stringify({ custom: 'Should Be Gone' }, null, 2)}\n`,
       'utf-8',
     )
 
     await buildPipeline(config, FIXTURES_DIR)
 
-    const raw = await readOutput(target, '_meta.json')
-    const meta = JSON.parse(raw)
+    const raw = await readOutput(target, '_meta.js')
+    const meta = parseNextraMeta(raw)
 
     // clean: true wipes outDir first, so no merge — fresh generation
     expect(meta.custom).toBeUndefined()
     expect(meta.index).toBe('Introduction')
+  })
+
+  it('leaves a hand-written _meta.js it cannot parse untouched', async () => {
+    const config = { ...makeConfig(target), clean: false }
+    const outDir = path.join(FIXTURES_DIR, `.docsync-test-${target}`)
+    const handWritten = "export default {\n  index: 'Home', // custom\n}\n"
+
+    await fs.mkdir(outDir, { recursive: true })
+    await fs.writeFile(path.join(outDir, '_meta.js'), handWritten, 'utf-8')
+
+    const result = await buildPipeline(config, FIXTURES_DIR)
+
+    expect(await readOutput(target, '_meta.js')).toBe(handWritten)
+    expect(result.warnings).toContain('_meta.js: existing file could not be parsed — left untouched')
   })
 })
