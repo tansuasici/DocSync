@@ -90,8 +90,8 @@ export async function resolveSourceFiles(
  *
  * When `rootDir` is provided, it is stripped from the path before deriving
  * the slug. This is essential for glob-based sources where the matched
- * path includes a long prefix (e.g. `../TnsAI.Docs/features/core/agents.md`
- * with rootDir `../TnsAI.Docs/features` → slug `core/agents`).
+ * path includes a long prefix (e.g. `../Repo/features/core/agents.md`
+ * with rootDir `../Repo/features` → slug `core/agents`).
  *
  * Examples (no rootDir):
  *   README.md → index
